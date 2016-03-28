@@ -29,6 +29,7 @@
 #define PINTypeIN4 TRISDbits.TRISD8 // J10 Pin 15, RD11
 
 #define PINTypeSW TRISDbits.TRISD6
+#define BUTTON PORTDbits.RD6
 
 #define INPUT1 LATDbits.LATD10 // input 1
 #define INPUT2 LATDbits.LATD11  // input 2
@@ -46,13 +47,12 @@
 // ******************************************************************************************* //
 
 typedef enum RS_enum {
-    wait, idle, wait2, forward, wait3, backward, wait4, idle2, 
+    idle, wait, forward, wait2, idle2, wait3, backward, wait4
 }stateType;
 
-volatile unsigned int val;
+volatile unsigned int val=0;
 
-//volatile status state = wait;
-//volatile status next;
+volatile stateType state = idle;
 
 int main(void)
 {   
@@ -71,47 +71,128 @@ int main(void)
     INPUT2=OFF;
     INPUT3=OFF;
     INPUT4=OFF;
-    
+ 
     initTimer2();
     initLCD();
     initADC();
     initPWM();
     
-    int radix=10;
     writeCMD(CLR);
     
-    moveCursorLCD(0,2);
-    //testLCD();
-    char buf[5];
-    const char* string;
+    PINTypeSW = INPUT;
+    CNPUDbits.CNPUD6 = 1;
     
+    moveCursorLCD(0,2);
+    char buf[5];
+    char buf2[7];
+    const char* string;
+    const char* string2;
     
     while(1){
         
         clearLCD();
-        if(IFS0bits.AD1IF == 1)
-        {
-            IFS0bits.AD1IF = 0;
-            val=ADC1BUF0;
-            //OC2RS=val+500;
-            //OC4RS=val+500;
+        
+        if(IFS0bits.AD1IF ==1) {
+            
+            AD1CON2bits.BUFM = 0;
+            val = ADC1BUF0;
+            
             analog=(3.3*val)/1023;
-            sprintf(buf, "%1.1f", analog);
+            
+            sprintf(buf, "%1.1f  ", analog);
             string=buf;
             printStringLCD(string);
-            delayMs(10);
+            
+            sprintf(buf2, "%d", val);
+            string2=buf2;
+            printStringLCD(string2);
+            delayMs(50);
+           
+            switch(state) {
+                case(idle):
+                    OC_off();
+                    if(PORTDbits.RD6==0) {
+                        changeForwards();
+                        state=wait;
+                    }
+                    break;
+                case(wait):
+                    if(PORTDbits.RD6==1) {
+                        state=forward;
+                        INPUT2=OFF;
+                        INPUT4=OFF;
+                        INPUT1=SEND;
+                        INPUT3=SEND;
+                    }
+                    break;
+                case(forward):
+                    
+                    if(val<512) {
+                        OC2RS=1023;
+                        OC4RS=val+420;
+                    }
+                    else {
+                        OC2RS=1023-val+420;
+                        OC4RS=1023;
+                    }
+                    
+                    if(PORTDbits.RD6==0) {
+                        state=wait2;
+                    }
+
+                    break;
+                case(wait2):
+                    if(PORTDbits.RD6==1) {
+                        INPUT1=OFF;
+                        INPUT3=OFF;
+                        INPUT2=OFF;
+                        INPUT4=OFF;
+                        state=idle2;
+                    }
+                    break;
+                case(idle2):
+                    OC_off();
+                    if(PORTDbits.RD6==0) {
+                        changeBackwards();
+                        state=wait3;
+                    }
+                    break;
+                case(wait3):
+                    if(PORTDbits.RD6==1) {
+                        INPUT1=OFF;
+                        INPUT3=OFF;
+                        INPUT2=SEND;
+                        INPUT4=SEND;
+                        state=backward;
+                    }
+                    break;
+                case(backward):
+                    if(val<512) {
+                        OC4RS=val+420;
+                        OC5RS=1023;
+                       
+                    }
+                    else {
+                        OC4RS=1023;
+                        OC5RS=1023-val+420;
+                    }
+                    if(PORTDbits.RD6==0) {
+                        state=wait4;
+                    }
+                    break;
+                case(wait4):
+                    if(PORTDbits.RD6==1) {
+                        INPUT1=OFF;
+                        INPUT3=OFF;
+                        INPUT2=OFF;
+                        INPUT4=OFF;
+                        state=idle;
+                    }
+                    break;        
+            }
+            IFS0bits.AD1IF = 0;
         }
-        
-        OC4RS=800;
-        OC5RS=1000;
-        
-        
+       
     }
     return 0;
 }
-
-//void __ISR(_ADC_VECTOR, IPL7AUTO) _ADCInterrupt(){
-  //  IFS0bits.AD1IF = 0;
-  //  val = ADC1BUF0;
-//}
-

@@ -6,7 +6,9 @@ extern "C" {
 #endif
 
 void initPWM();
-
+void changeForward();
+void changeBackward();
+void OC_off();
 
 #ifdef	__cplusplus
 }

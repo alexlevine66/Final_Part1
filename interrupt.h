@@ -41,4 +41,3 @@ unsigned int __attribute__((nomips16)) INTDisableInterrupts(void);
 void __attribute__ ((nomips16)) CheKseg0CacheOn();
 
 #endif	/* INTERRUPT_H */
-
