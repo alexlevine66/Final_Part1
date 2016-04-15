@@ -1,3 +1,12 @@
+// ******************************************************************************************* //
+//
+// File:         lab3p2.c
+// Date:         3-28-2014
+// Authors:      Alex Levine
+//
+// Description: This initializes the ADC to a 16 bit unsigned integer with auto sampling.
+//      It has a prescalar of 4 and scans V ref - and AN0.
+// ******************************************************************************************* //
 
 #ifndef ADC_H
 #define	ADC_H

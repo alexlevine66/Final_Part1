@@ -1,10 +1,25 @@
 // ******************************************************************************************* //
 //
-// File:         lab1p2.c
-// Date:         12-30-2014
-// Authors:      Garrett Vanhoy
+// File:         lab3p2.c
+// Date:         3-28-2014
+// Authors:      Alex Levine
 //
-// Description: 
+// Description: This file takes in the ADC value from the AN0 pin and changes it to a const char*
+//      which is then able to be printed onto the LCD. Then, it starts in state idle and waits for 
+//      the RD6 button to be pushed, once pushed it enters the wait state. The wait state ensures that
+//      the button is released and then the state transitions to the forward state. In the forward
+//      state, it assigns different values to the OC2RS and OC4RS registers, depending on what the
+//      ADC value is, which is obtained from the position of the potentiometer. When the RD6 button
+//      is pressed, the state transitions to the wait2 state. There, it waits for the button to be
+//      released, and upon release the state goes to the idle2 state which shuts off all OC modules.
+//      When the button is pressed again, it transitions to the wait3 state where is ensures that the
+//      button is released. Once released, the backwards function of the PWM is called, which remaps the pins,
+//      and the state 
+//      transitions to the backwards state. In the backward state, it assigns different values to 
+//      the OC4RS and OC5RS registers, depending on what the ADC value is, which is obtained from 
+//      the position of the potentiometer. When the RD6 button is pressed, it transitions to the 
+//      wait4 state, where is checks to ensure that the button is released. Once released, the OC 
+//      modules are all shut off and it transitions back to the first idle state, and then repeats.
 // ******************************************************************************************* //
 
 #include <xc.h>
@@ -103,9 +118,9 @@ int main(void)
             string=buf;
             printStringLCD(string);
             
-            sprintf(buf2, "%d", val);
+            //sprintf(buf2, "%d", val);
             string2=buf2;
-            printStringLCD(string2);
+            //printStringLCD(string2);
             delayMs(50);
            
             switch(state) {
