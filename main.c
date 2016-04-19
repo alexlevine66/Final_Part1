@@ -99,7 +99,6 @@ int main(void)
     
     moveCursorLCD(0,2);
     char buf_1[7];
-    int qw = 0;
     char buf_2[7];
     char buf_3[7];
     const char* string_1;
@@ -109,7 +108,8 @@ int main(void)
     while(1){
         
         clearLCD();
-        
+        INPUT1=SEND;
+        INPUT3=SEND;
         if(IFS0bits.AD1IF ==1) {
             
             
@@ -121,8 +121,6 @@ int main(void)
             analog_2=(3.3*val_2)/1023;
             analog_3=(3.3*val_3)/1023;
             analog_1=analog_1+0.25;
-            //analog_2=analog_2-0.05;
-            //analog_3=analog_3+0.05;
             
             sprintf(buf_1, "%1.2f  ", analog_1);
             sprintf(buf_2, "%1.2f  ", analog_2);
@@ -141,59 +139,69 @@ int main(void)
             switch(state) {
                 case(idle):
                     OC_off();
-                    if(PORTDbits.RD6==0) {
+                    if(PORTDbits.RD6==0) // Button pushed
+                    {
                         OC_on();
                         state=wait;
                     }
                     break;
                 case(wait):
-                    if(PORTDbits.RD6==1) {
+                    if(PORTDbits.RD6==1) // Button released
+                    {
                         state=forward;
                     }
                     break;
                 case(forward):
                     
-                    if(analog_2>2 && analog_1 < 2 && analog_3< 2) {
+                    if(analog_2 > 2 && analog_1 < 2 && analog_3 < 2) // Going forward, middle sensor on 
+                    {
                         OC2RS=750;
                         OC4RS=800;
                     }
-                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 < 2) {
+                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 < 2) // No sensors activated, move forward
+                    {
                         OC2RS=750;
                         OC4RS=800;
                     }
-                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 < 2) {
+                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 < 2) // Sensor 1 and 2 on, turn left
+                    {
                         OC2RS=950;
                         OC4RS=650;
                         delayMs(10);
                     }
-                    else if(analog_2 > 2 && analog_1 < 2 && analog_3 > 2) {
+                    else if(analog_2 > 2 && analog_1 < 2 && analog_3 > 2) // Sensor 2 and 3 on, turn right
+                    {
                         OC2RS=650;
                         OC4RS=950;
                         delayMs(10);
                     }
-                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 > 2) {
+                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 > 2) // All sensors on, go forward
+                    {
                         OC2RS=750;
-                        OC4RS=750;
-                        
+                        OC4RS=750;  
                     }
-                    else if(analog_2 < 2 && analog_1 > 2 && analog_3 < 2) {
+                    else if(analog_2 < 2 && analog_1 > 2 && analog_3 < 2) // Only sensor 1 on, turn left hard
+                    {
                         OC2RS=950;
                         OC4RS=650;
                         delayMs(25);
                     }
-                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 > 2) {
+                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 > 2) // Only sensor 3 on, turn hard right
+                    {
                         OC2RS=650;
                         OC4RS=950;
                         delayMs(25);
                     }
                     
-                    if(PORTDbits.RD6==0) {
+                    if(PORTDbits.RD6==0) // Button pushed
+                    {
                         state=wait2;
                     }
 
                     break;
                 case(wait2):
-                    if(PORTDbits.RD6==1) {
+                    if(PORTDbits.RD6==1) // Button released
+                    {
                         state=idle;
                         qw=0;
                     }
@@ -202,7 +210,7 @@ int main(void)
                     
             }
             
-          IFS0bits.AD1IF = 0;
+          IFS0bits.AD1IF = 0; // Flag down, repeat
           
         }
     }
