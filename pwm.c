@@ -1,3 +1,13 @@
+// ******************************************************************************************* //
+//
+// File:         lab3p1.c
+// Date:         3-28-2014
+// Authors:      Alex Levine
+//
+// Description: This file initializes the PWM, and remaps pins to allow the robot to go
+//      forwards and backwards. It also shuts off the output compare modules 2, 4, and 5 to
+//      go into the idle state. The PWM uses timer 3 with a prescalar of 1 and a PR value of 1023.
+// ******************************************************************************************* //
 
 #include <xc.h>
 //#include <proc/p32x470f5121.h>
@@ -42,23 +52,23 @@ void changeForwards() {
     
     RPD1Rbits.RPD1R = 0b1011; // map OC2 to RD1, input 1
     RPD9Rbits.RPD9R = 0;    //input 2
-    RPD3Rbits.RPD3R = 0b1011; // map OC4 to RD3, input 3 
-    RPD11Rbits.RPD11R = 0;   //input 4
+   // RPD3Rbits.RPD3R = 0b1011; // map OC4 to RD3, input 3 
+    //RPD11Rbits.RPD11R = 0;   //input 4
     
     OC2CONbits.ON=1;
     OC4CONbits.ON=1;
     OC5CONbits.ON=0;
 }
 
-void changeBackwards() {
+void turnAround() {
     OC2CONbits.ON=0;
     OC4CONbits.ON=0;
     OC5CONbits.ON=0;
     
     RPD1Rbits.RPD1R = 0; // map OC2 to RD1, input 1
     RPD9Rbits.RPD9R = 0b1011;    //input 2
-    RPD3Rbits.RPD3R = 0; // map OC4 to RD3, input 3 
-    RPD11Rbits.RPD11R = 0b1011;   //input 4
+    //RPD3Rbits.RPD3R = 0; // map OC4 to RD3, input 3 
+    //RPD11Rbits.RPD11R = 0b1011;   //input 4
     
     OC2CONbits.ON=0;
     OC4CONbits.ON=1;
@@ -70,4 +80,9 @@ void OC_off() {
     OC2CONbits.ON=0;
     OC4CONbits.ON=0;
     OC5CONbits.ON=0;
+}
+
+void OC_on() {
+    OC2CONbits.ON=1;
+    OC4CONbits.ON=1;
 }

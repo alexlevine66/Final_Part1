@@ -1,6 +1,6 @@
 // ******************************************************************************************* //
 //
-// File:         lab3p2.c
+// File:         lab3p1.c
 // Date:         3-28-2014
 // Authors:      Alex Levine
 //
@@ -11,6 +11,6 @@
 #ifndef ADC_H
 #define	ADC_H
 
-void initADC();
+void initADC_1();
 
 #endif	/* ADC_H */

@@ -1,25 +1,16 @@
 // ******************************************************************************************* //
 //
-// File:         lab3p2.c
+// File:         lab3p1.c
 // Date:         3-28-2014
 // Authors:      Alex Levine
 //
-// Description: This file takes in the ADC value from the AN0 pin and changes it to a const char*
-//      which is then able to be printed onto the LCD. Then, it starts in state idle and waits for 
-//      the RD6 button to be pushed, once pushed it enters the wait state. The wait state ensures that
-//      the button is released and then the state transitions to the forward state. In the forward
-//      state, it assigns different values to the OC2RS and OC4RS registers, depending on what the
-//      ADC value is, which is obtained from the position of the potentiometer. When the RD6 button
-//      is pressed, the state transitions to the wait2 state. There, it waits for the button to be
-//      released, and upon release the state goes to the idle2 state which shuts off all OC modules.
-//      When the button is pressed again, it transitions to the wait3 state where is ensures that the
-//      button is released. Once released, the backwards function of the PWM is called, which remaps the pins,
-//      and the state 
-//      transitions to the backwards state. In the backward state, it assigns different values to 
-//      the OC4RS and OC5RS registers, depending on what the ADC value is, which is obtained from 
-//      the position of the potentiometer. When the RD6 button is pressed, it transitions to the 
-//      wait4 state, where is checks to ensure that the button is released. Once released, the OC 
-//      modules are all shut off and it transitions back to the first idle state, and then repeats.
+// Description: This file takes in an ADC value from the AN0 pin, determined by the position of the
+//      potentiometer, and converts it to a digital value. It then takes that file and converts it
+//      to a const char* and prints that value to the LCD. It also uses the backwards or forwards
+//      function in the pwm.c file to remap the pins to go in one direction or the other. It then
+//      sets the OC2RS and OC4RS registers if the forwards function is called, or sets the 
+//      OC5RS and OC4RS registers if the backwards function is called. This will allow the wheels to
+//      turn in one direction or the other and sets the duty cycle to power the motors.
 // ******************************************************************************************* //
 
 #include <xc.h>
@@ -46,6 +37,9 @@
 #define PINTypeSW TRISDbits.TRISD6
 #define BUTTON PORTDbits.RD6
 
+#define LED_3 TRISDbits.TRISD2 // LED3
+#define LED3 LATDbits.LATD2
+
 #define INPUT1 LATDbits.LATD10 // input 1
 #define INPUT2 LATDbits.LATD11  // input 2
 #define INPUT3 LATDbits.LATD7  // input 3
@@ -65,7 +59,9 @@ typedef enum RS_enum {
     idle, wait, forward, wait2, idle2, wait3, backward, wait4
 }stateType;
 
-volatile unsigned int val=0;
+volatile unsigned int val_1=0;
+volatile unsigned int val_2=0;
+volatile unsigned int val_3=0;
 
 volatile stateType state = idle;
 
@@ -73,8 +69,10 @@ int main(void)
 {   
     SYSTEMConfigPerformance(10000000);
     enableInterrupts();
-    double analog=0;
-    int i;
+    double analog_1=0;
+    double analog_2=0;
+    double analog_3=0;
+    int i=0;
     
     //PINTypeSW=1;
     PINTypeIN1=OUTPUT;
@@ -89,7 +87,9 @@ int main(void)
  
     initTimer2();
     initLCD();
-    initADC();
+    initADC_1();
+    //initADC_2();
+    //initADC_3();
     initPWM();
     
     writeCMD(CLR);
@@ -98,10 +98,13 @@ int main(void)
     CNPUDbits.CNPUD6 = 1;
     
     moveCursorLCD(0,2);
-    char buf[5];
-    char buf2[7];
-    const char* string;
-    const char* string2;
+    char buf_1[7];
+    int qw = 0;
+    char buf_2[7];
+    char buf_3[7];
+    const char* string_1;
+    const char* string_2;
+    const char* string_3;
     
     while(1){
         
@@ -109,46 +112,79 @@ int main(void)
         
         if(IFS0bits.AD1IF ==1) {
             
-            AD1CON2bits.BUFM = 0;
-            val = ADC1BUF0;
             
-            analog=(3.3*val)/1023;
+            val_1 = ADC1BUF0;
+            val_2 = ADC1BUF2;
+            val_3 = ADC1BUF4;
+
+            analog_1=(3.3*val_1)/1023;
+            analog_2=(3.3*val_2)/1023;
+            analog_3=(3.3*val_3)/1023;
+            analog_1=analog_1+0.25;
+            //analog_2=analog_2-0.05;
+            //analog_3=analog_3+0.05;
             
-            sprintf(buf, "%1.1f  ", analog);
-            string=buf;
-            printStringLCD(string);
+            sprintf(buf_1, "%1.2f  ", analog_1);
+            sprintf(buf_2, "%1.2f  ", analog_2);
+            sprintf(buf_3, "%1.2f  ", analog_3);
             
-            //sprintf(buf2, "%d", val);
-            string2=buf2;
-            //printStringLCD(string2);
+            string_1=buf_1;
+            string_2=buf_2;
+            string_3=buf_3;
+            
+            printStringLCD(string_1);
+            printStringLCD(string_2);
+            printStringLCD(string_3);
+            
             delayMs(50);
            
             switch(state) {
                 case(idle):
                     OC_off();
                     if(PORTDbits.RD6==0) {
-                        changeForwards();
+                        OC_on();
                         state=wait;
                     }
                     break;
                 case(wait):
                     if(PORTDbits.RD6==1) {
                         state=forward;
-                        INPUT2=OFF;
-                        INPUT4=OFF;
-                        INPUT1=SEND;
-                        INPUT3=SEND;
                     }
                     break;
                 case(forward):
                     
-                    if(val<512) {
-                        OC2RS=1023;
-                        OC4RS=val+420;
+                    if(analog_2>2 && analog_1 < 2 && analog_3< 2) {
+                        OC2RS=750;
+                        OC4RS=800;
                     }
-                    else {
-                        OC2RS=1023-val+420;
-                        OC4RS=1023;
+                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 < 2) {
+                        OC2RS=750;
+                        OC4RS=800;
+                    }
+                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 < 2) {
+                        OC2RS=950;
+                        OC4RS=650;
+                        delayMs(10);
+                    }
+                    else if(analog_2 > 2 && analog_1 < 2 && analog_3 > 2) {
+                        OC2RS=650;
+                        OC4RS=950;
+                        delayMs(10);
+                    }
+                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 > 2) {
+                        OC2RS=750;
+                        OC4RS=750;
+                        
+                    }
+                    else if(analog_2 < 2 && analog_1 > 2 && analog_3 < 2) {
+                        OC2RS=950;
+                        OC4RS=650;
+                        delayMs(25);
+                    }
+                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 > 2) {
+                        OC2RS=650;
+                        OC4RS=950;
+                        delayMs(25);
                     }
                     
                     if(PORTDbits.RD6==0) {
@@ -158,56 +194,19 @@ int main(void)
                     break;
                 case(wait2):
                     if(PORTDbits.RD6==1) {
-                        INPUT1=OFF;
-                        INPUT3=OFF;
-                        INPUT2=OFF;
-                        INPUT4=OFF;
-                        state=idle2;
-                    }
-                    break;
-                case(idle2):
-                    OC_off();
-                    if(PORTDbits.RD6==0) {
-                        changeBackwards();
-                        state=wait3;
-                    }
-                    break;
-                case(wait3):
-                    if(PORTDbits.RD6==1) {
-                        INPUT1=OFF;
-                        INPUT3=OFF;
-                        INPUT2=SEND;
-                        INPUT4=SEND;
-                        state=backward;
-                    }
-                    break;
-                case(backward):
-                    if(val<512) {
-                        OC4RS=val+420;
-                        OC5RS=1023;
-                       
-                    }
-                    else {
-                        OC4RS=1023;
-                        OC5RS=1023-val+420;
-                    }
-                    if(PORTDbits.RD6==0) {
-                        state=wait4;
-                    }
-                    break;
-                case(wait4):
-                    if(PORTDbits.RD6==1) {
-                        INPUT1=OFF;
-                        INPUT3=OFF;
-                        INPUT2=OFF;
-                        INPUT4=OFF;
                         state=idle;
+                        qw=0;
                     }
-                    break;        
+                    break;
+                
+                    
             }
-            IFS0bits.AD1IF = 0;
+            
+          IFS0bits.AD1IF = 0;
+          
         }
-       
     }
     return 0;
 }
+
+

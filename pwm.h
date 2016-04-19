@@ -1,6 +1,6 @@
 // ******************************************************************************************* //
 //
-// File:         lab3p2.c
+// File:         lab3p1.c
 // Date:         3-28-2014
 // Authors:      Alex Levine
 //
@@ -17,9 +17,11 @@ extern "C" {
 #endif
 
 void initPWM();
-void changeForward();
-void changeBackward();
+void changeForwards();
+void turnAround();
 void OC_off();
+void OC_on();
+
 
 #ifdef	__cplusplus
 }
