@@ -12,5 +12,6 @@
 #define	ADC_H
 
 void initADC_1();
+int IR_Output(void);
 
 #endif	/* ADC_H */

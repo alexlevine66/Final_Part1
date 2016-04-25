@@ -33,3 +33,32 @@ void initADC_1(){
     AD1CON1bits.ADON = 1; // turn on the ADC
 }
 
+int IR_Output(void) {
+
+	int val_1;
+	int val_2;
+	int val_3;
+	
+	int output = 0;
+
+	if(IFS0bits.AD1IF ==1) {
+           
+            val_1 = ADC1BUF0 + 50;
+            val_2 = ADC1BUF2 - 50;
+            val_3 = ADC1BUF4;
+			
+			if(val_1 > 675) {
+				output |= 1;
+			}
+			if(val_2 > 675) {
+				output |= 2;
+			}
+			if(val_3 > 675) {
+				output |= 4;
+			}
+			
+			return output;
+			
+    }
+
+}

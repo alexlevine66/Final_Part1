@@ -21,6 +21,7 @@ void changeForwards();
 void turnAround();
 void OC_off();
 void OC_on();
+void accelerator(int L, int R);
 
 
 #ifdef	__cplusplus

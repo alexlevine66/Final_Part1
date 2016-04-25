@@ -56,24 +56,20 @@
 // ******************************************************************************************* //
 
 typedef enum RS_enum {
-    idle, wait, forward, wait2, idle2, wait3, backward, wait4
+    go, left, right, stop, wait, waitf
 }stateType;
 
 volatile unsigned int val_1=0;
 volatile unsigned int val_2=0;
 volatile unsigned int val_3=0;
 
-volatile stateType state = idle;
+volatile stateType state = stop;
 
 int main(void)
 {   
     SYSTEMConfigPerformance(10000000);
     enableInterrupts();
-    double analog_1=0;
-    double analog_2=0;
-    double analog_3=0;
-    int i=0;
-    
+  
     //PINTypeSW=1;
     PINTypeIN1=OUTPUT;
     PINTypeIN2=OUTPUT;
@@ -88,8 +84,6 @@ int main(void)
     initTimer2();
     initLCD();
     initADC_1();
-    //initADC_2();
-    //initADC_3();
     initPWM();
     
     writeCMD(CLR);
@@ -99,119 +93,85 @@ int main(void)
     
     moveCursorLCD(0,2);
     char buf_1[7];
-    char buf_2[7];
-    char buf_3[7];
     const char* string_1;
-    const char* string_2;
-    const char* string_3;
+    int IR;
+    stateType q = go;
+    int flag = 0;
     
-    while(1){
+    clearLCD();
+    
+    INPUT1=SEND;
+    INPUT3=SEND;
         
-        clearLCD();
-        INPUT1=SEND;
-        INPUT3=SEND;
-        if(IFS0bits.AD1IF ==1) {
-            
-            
-            val_1 = ADC1BUF0;
-            val_2 = ADC1BUF2;
-            val_3 = ADC1BUF4;
-
-            analog_1=(3.3*val_1)/1023;
-            analog_2=(3.3*val_2)/1023;
-            analog_3=(3.3*val_3)/1023;
-            analog_1=analog_1+0.25;
-            
-            sprintf(buf_1, "%1.2f  ", analog_1);
-            sprintf(buf_2, "%1.2f  ", analog_2);
-            sprintf(buf_3, "%1.2f  ", analog_3);
-            
-            string_1=buf_1;
-            string_2=buf_2;
-            string_3=buf_3;
-            
-            printStringLCD(string_1);
-            printStringLCD(string_2);
-            printStringLCD(string_3);
-            
-            delayMs(50);
-           
-            switch(state) {
-                case(idle):
-                    OC_off();
-                    if(PORTDbits.RD6==0) // Button pushed
+    while(1){
+        switch(state) {
+            case stop:
+                accelerator(0,0);
+                OC_off();
+                if(PORTDbits.RD6==0) // Button released
                     {
                         OC_on();
                         state=wait;
                     }
-                    break;
-                case(wait):
-                    if(PORTDbits.RD6==1) // Button released
+                break;
+            case wait:
+                if(PORTDbits.RD6==1) // Button released
                     {
-                        state=forward;
+                        state=go;
                     }
-                    break;
-                case(forward):
-                    
-                    if(analog_2 > 2 && analog_1 < 2 && analog_3 < 2) // Going forward, middle sensor on 
+                break;
+            case waitf:
+                if(PORTDbits.RD6==1) // Button released
                     {
-                        OC2RS=750;
-                        OC4RS=800;
+                        state=stop;
                     }
-                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 < 2) // No sensors activated, move forward
+                break;
+            case go:
+                IR = IR_Output();
+                if(IR == 2) {
+                    accelerator(100,100);
+                }
+                else if( IR == 1 || IR == 3) {
+                    q = left;
+                    accelerator(-60,100);
+                }
+                else if( IR == 4 || IR == 6) {
+                    q = right;
+                    accelerator(100,-30);
+                }
+                else if( IR == 7) {
+                    accelerator(100,100);
+                    if(flag<1) {
+                        delayMs(400);
+                        while(IR != 2) {
+                            accelerator(-100,100);
+                            IR = IR_Output();
+                        }
+                        accelerator(100,100);
+                    }
+                    flag++;  
+                }
+               
+                else if(IR == 0) {
+                    switch(q) {
+                        case right:
+                            accelerator(100,-30);
+                            break;
+                        case left:
+                            accelerator(-30,100);
+                            break;
+                        default:
+                            q = go;
+                            accelerator(50,50);
+                            break;
+                    }
+                }
+                if(PORTDbits.RD6==0) // Button released
                     {
-                        OC2RS=750;
-                        OC4RS=800;
+                        state=waitf;
+                        flag = 0;
                     }
-                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 < 2) // Sensor 1 and 2 on, turn left
-                    {
-                        OC2RS=950;
-                        OC4RS=650;
-                        delayMs(10);
-                    }
-                    else if(analog_2 > 2 && analog_1 < 2 && analog_3 > 2) // Sensor 2 and 3 on, turn right
-                    {
-                        OC2RS=650;
-                        OC4RS=950;
-                        delayMs(10);
-                    }
-                    else if(analog_2 > 2 && analog_1 > 2 && analog_3 > 2) // All sensors on, go forward
-                    {
-                        OC2RS=750;
-                        OC4RS=750;  
-                    }
-                    else if(analog_2 < 2 && analog_1 > 2 && analog_3 < 2) // Only sensor 1 on, turn left hard
-                    {
-                        OC2RS=950;
-                        OC4RS=650;
-                        delayMs(25);
-                    }
-                    else if(analog_2 < 2 && analog_1 < 2 && analog_3 > 2) // Only sensor 3 on, turn hard right
-                    {
-                        OC2RS=650;
-                        OC4RS=950;
-                        delayMs(25);
-                    }
-                    
-                    if(PORTDbits.RD6==0) // Button pushed
-                    {
-                        state=wait2;
-                    }
-
-                    break;
-                case(wait2):
-                    if(PORTDbits.RD6==1) // Button released
-                    {
-                        state=idle;
-                        qw=0;
-                    }
-                    break;
-                
-                    
-            }
-            
-          IFS0bits.AD1IF = 0; // Flag down, repeat
-          
+                break;
         }
     }
     return 0;
